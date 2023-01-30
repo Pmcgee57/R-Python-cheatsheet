@@ -1,0 +1,740 @@
+---
+title: "Python to R Cheat Sheet"
+output: 
+  html_document:
+    toc: true
+    theme: united
+    highlight: zenburn
+---
+
+<!-- Make rmarkdown code take wider portion of page -->
+
+<style type="text/css">
+.main-container {
+  max-width: 1800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+<!-- edit font size -->
+
+<style type="text/css">
+  body{
+  font-size: 16pt;
+}
+code.r{
+  font-size: 16px;
+}
+pre {
+  font-size: 16px
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(reticulate)
+library(tidyverse)
+library(readr)
+library(kableExtra)
+library(data.table)
+
+
+## installing python libraries in R
+# py_install("pandas")
+# py_install("openpyxl")
+# py_install("numpy")
+# py_install("matplotlib")
+# py_install('seaborn')
+
+df <- iris
+
+df <- df %>%
+  rename(
+    Sepal_Length = Sepal.Length,
+    Sepal_Width = Sepal.Width,
+    Petal_Length = Petal.Length,
+    Petal_Width = Petal.Width
+  )
+# df$Species <- as.character(df$Species)
+```
+
+```{python, include = F}
+df = r.df
+```
+
+## **Calling Python in R**
+
+R allows you to call Python and it's libraries/functions using the reticulate library.
+That's what I'll be using to have my Python and R code in one document.
+
+**My Method:**
+
+*(Assuming R and RStudio are downloaded)*
+
+1. Install Conda - https://www.anaconda.com/
+
+2. Open RStudio and run the following code
+  helpful video - https://www.youtube.com/watch?v=qATvD6kQ47s
+
+```{r, eval = F}
+#install reticulate package
+install.packages('reticulate')
+
+#load package
+library(reticulate)
+
+#check configuration of reticulate
+reticulate::py_config()
+
+#if multiple versions of python are installed, can use this to select one of choice
+use_python(path, required = TRUE)
+
+#load python shell
+repl_python()
+```
+
+`r repl_python()` Will switch the console to a Python interpreter. "exit" will revert back to R code.
+
+In Rmarkdown, use "```{python}" at the beginning of chunk to use Python for that section.
+
+<br>
+
+## **Loading Python Packages**
+
+May need to install the package to call in R first with this function
+
+```{r, eval = F}
+py_install("pandas")
+```
+
+Then import libraries like you would from Python
+
+```{python, eval = F}
+import pandas
+```
+
+<br>
+
+## **Reading .csv and .xlsx Files** {.tabset .tabset-fade .tabset-pills}
+
+### In R
+
+```{r, eval =F}
+library(readr)
+library(readxl)
+
+df <- read.csv("C:\\Users\\pmcgee\\OneDrive - nassaucandy.com\\Documents\\Mastering_Shiny\\Data\\iris.csv")
+read_excel("C:\\Users\\pmcgee\\OneDrive - nassaucandy.com\\Documents\\Mastering_Shiny\\Data\\iris.xlsx")
+```
+
+### In Python
+
+```{python, eval = F}
+import pandas as pd
+
+df = pd.read_csv("C:\\Users\\pmcgee\\OneDrive - nassaucandy.com\\Documents\\Mastering_Shiny\\Data\\iris.csv")
+pd.read_excel("C:\\Users\\pmcgee\\OneDrive - nassaucandy.com\\Documents\\Mastering_Shiny\\Data\\iris.xlsx")
+```
+
+## **Inspecting a Data Frame** {.tabset .tabset-fade .tabset-pills}
+
+### In R
+
+I like to pair my functions with the 'pipe' %>% operator from the magrittr package. (Ctrl + Shift + M).
+
+You Definitely don't need to do this for a simple call for one function but it makes it easier when we want to chain multiple functions together to be in the habit of using the pipe.
+
+```{r, eval = F}
+# view first n rows
+df %>% head()
+
+#view last n rows
+df %>% tail()
+
+#number of rows
+df %>% nrow()
+
+#number of columns
+df %>% ncol()
+
+#rows and columns
+df %>% dim()
+
+#summary stats of df by column
+df %>% summary()
+
+# view all columns with their column class and some data
+df %>% glimpse()
+# or
+df %>%  str()
+```
+
+
+### In Python
+```{python, eval = F}
+# view first n rows
+df.head()
+
+#view last n rows
+df.tail()
+
+#number of rows
+df.shape[0]
+
+#number of columns
+df.shape[1]
+
+#rows and columns
+df.shape
+
+#summary stats of df by column
+df.info()
+
+# view all columns with their column class and some data
+df.describe()
+```
+
+<br>
+
+# **Data Wrangling**
+
+## **Passing Objects between Python and R in reticulate**
+
+Let's say I have a data frame that I loaded into my RStudio IDE via R.
+
+```{r, eval = F}
+df <- iris
+
+df %>% head() 
+```
+
+```{r, echo=FALSE}
+df %>% head() %>% 
+  kbl() %>%
+  kable_styling("hover", full_width = F, position = "left", font_size = 14)
+```
+
+If I wanted to pass this object (in this case a dataframe) to Python I can using reticulate.
+
+R Objects are called in python using the syntax "r.'object_name'"
+
+```{python}
+py_df = r.df
+
+py_df.head()
+```
+
+If I wanted to do the opposite and pass a Python object to R, it gets called with the syntax "py$'object_name'"
+
+```{r, eval = F}
+df <- py$py_df
+
+df %>% head()
+```
+
+```{r, echo=FALSE}
+df %>% head() %>% 
+  kbl() %>%
+  kable_styling("hover", full_width = F, position = "left", font_size = 14)
+```
+
+<br>
+
+## **Filtering** {.tabset .tabset-fade .tabset-pills}
+
+### In R
+
+I'll be pairing solutions in dplyr with their data.table alternatives when applicable, which is faster for very large data.
+
+```{r, eval=FALSE}
+library(tidyverse)
+library(data.table)
+
+#filter with data.table need to convert to a data.table object first
+df <- data.table(df)
+df[Species == "setosa"]
+
+#1. basic filtering
+filter(df, Species == "setosa")
+df %>% filter(Species == "setosa")
+
+
+#2. filter multiple columns
+df %>% filter(Species == "virginica" & Sepal_Width >= 3.5)
+
+#filter multiple columns with data.table
+df[Species == "virginica" & Sepal_Width >= 3.5]
+
+
+#3. Intermediate filtering
+
+#3a. using %in% 
+x <- c("setosa", "virginica")
+df %>% filter(Species %in% x)
+
+#data.table using %in% and %chin% (faster than %in% for characters)
+x <- c("setosa", "virginica")
+df[Species %in% x]
+df[as.character(Species) %chin% x]
+
+#3b. using %like%
+df %>% filter(Species %like% "set")
+
+# data.table using %like%
+df[Species %like% "set"]
+
+#3c. using %between%
+df %>% filter(Petal_Length %between% c(1,2))
+
+
+
+
+```
+
+### In Python
+
+```{python, eval = F}
+import numpy as np
+import pandas as pd
+
+#1. basic filtering
+df[df['Species'] == "setosa"]
+df[df.Species == "setosa"]
+
+# using query method
+df.query("Species == 'setosa'")
+
+
+#2. filter multiple columns 
+df[(df['Species'] == "virginica") & (df["Speal_Width"] >= 3.5)]
+
+#query method for multiple columns
+df.query("Species == 'setosa' and `Speal_Width` >= 3.5")
+
+#3. Intermediate filtering
+
+#3a. using .isin()
+df['Species'].isin(['setosa'])
+
+#3b. Partial string match
+df['Species'].str.contains('set', case = False, na = False)
+```
+
+<br>
+
+## **Selecting** {.tabset .tabset-fade .tabset-pills}
+
+### In R
+
+```{r, eval = F}
+#1. Selecting and dropping columns
+select(df, Species, Sepal_Length)
+select(df, -Petal_Length)
+
+# data.table
+df[,c("Species", "Sepal_Length")]
+df[, -("Petal_Length")]
+
+#2. selecting row by position
+df[1:5,]
+
+#3. Selecting rows based on condition
+df[df$Species == 'setosa',]
+```
+
+### In Python
+
+```{python, eval = F}
+#1. Selecting and dropping columns
+df[["Species", "Sepal_Length"]]
+df.drop("Petal_Length", 1)
+
+#2. selecting row by position
+df.iloc[0:5]
+df.loc[0:4]
+
+#3. Selecting rows based on condition
+df.loc[df.Species == "setosa"]
+```
+
+<br>
+
+## **Arrange** {.tabset .tabset-fade .tabset-pills}
+
+
+### In R
+
+```{r, eval=FALSE}
+df %>% arrange(Species)
+df %>% arrange(desc(Species))
+
+#data.table
+setorder(df, cols = "Species")
+setorder(df, cols = - "Species")
+```
+
+### In Python
+
+```{python, eval=FALSE}
+df.sort_values("Species")
+df.sort_values("Species", ascending = False)
+```
+
+<br>
+
+## **Grouping** {.tabset .tabset-fade .tabset-pills}
+
+### In R
+
+```{r, eval=FALSE}
+df %>% group_by(Species)
+df %>% group_by(Species, Sepal_Length)
+df %>% ungroup()
+```
+
+### In Python
+
+```{python, eval=FALSE}
+df.groupby("Species")
+df.groupby(["Species", "Sepal_Length"])
+
+```
+
+<br>
+
+## **Group by and Aggregating/Summarizing** {.tabset .tabset-fade .tabset-pills}
+
+### In R
+
+Useful post - https://stackoverflow.com/questions/38935541/what-is-the-pandas-equivalent-of-dplyr-summarize-aggregate-by-multiple-functions
+
+```{r, eval = F}
+# 1. Basic Group by and aggregate
+df %>%
+  group_by(Species) %>%
+  summarize(mean_sepal_length = mean(Sepal_Length))
+
+# 2. grouping by one column and performing multiple aggregations on same column
+df %>%
+  group_by(Species) %>%
+  summarize(mean_sepal_length = mean(Sepal_Length),
+            max_sepal_length = max(Sepal_Length),
+            min_sepal_length = min(Sepal_Length))
+
+# 3. grouping by one column and performing aggregations on multiple columns
+df %>%
+  group_by(Species) %>%
+  summarize(mean_sepal_length = mean(Sepal_Length),
+            max_petal_width = max(Petal_Width))
+
+# 3a. Using across (apply same function easily to multiple columns)
+df %>%
+  group_by(Species) %>%
+  summarize(
+    across(c(Speal_Width, Petal_Width),
+                  .fns =  list(mean = mean, max = max, min = min), na.rm = TRUE, .names = "{col}_{fn}"))
+
+# 3b. Using across apply multiple functions to multiple columns
+df %>%
+  group_by(Species) %>%
+  summarize(
+    across(everything(),
+                  .fns =  list(mean = mean, max = max, min = min), na.rm = TRUE, .names = "{col}_{fn}"))
+
+#data.table method
+
+# 1. Basic Group by and aggregate
+df[,. (mean_sepal_length = mean(Sepal_Length)), by = Species]
+
+# 2. grouping by one column and performing multiple aggregations on same column
+df[,. (mean_sepal_length = mean(Sepal_Length), max_sepal_width = max(Speal_Width), min_sepal_width = min(Speal_Width)), by = Species]
+
+# 3. grouping by one column and performing aggregations on multiple columns
+df[,. (mean_sepal_length = mean(Sepal_Length), max_petal_width = max(Petal_Width)), by = Species]
+```
+
+### In Python
+
+Useful post - https://stackoverflow.com/questions/38935541/what-is-the-pandas-equivalent-of-dplyr-summarize-aggregate-by-multiple-functions 
+
+```{python, eval = F}
+# 1. Basic Group by and aggregate
+df.groupby("Species").agg({'Sepal_Length' : 'mean'})
+
+# 1a. rename calculated column and remove column index
+df.groupby('Species')['Sepal_Length'].agg(['mean']).rename(columns={'mean': 'mean_sepal_length'}).reset_index()
+
+
+# 2. grouping by one column and performing multiple aggregations on same column
+df.groupby("Species").agg({'Sepal_Length' : ['mean', 'min', 'max']})
+
+
+# 3. grouping by one column and performing aggregations on multiple columns
+#can, but dont need to reset index
+df.groupby(["Species"]).agg({"Sepal_Length" : ["mean"], "Petal_Width" : ["max"]})
+
+# 3a. can save as variable and then index the df
+df2 = df.groupby(["Species"]).agg({"Sepal_Length" : ["mean"], "Sepal_Length" : ["max"]})
+df2["Sepal_Length"].reset_index()
+
+# 3b. group by and Apply multiple functions to multiple columns
+df.groupby('Species').agg({'Sepal_Length':['sum','mean','std'],'Petal_Width':['sum','mean','std'],'Petal_Length':['sum','mean','std']})
+
+# 3c. Group by and apply function to all columns 
+df.groupby('Species').agg(['mean','min','max']).reset_index()
+
+```
+
+<br>
+
+## **Chained Operations** {.tabset .tabset-fade .tabset-pills}
+
+### In R
+
+```{r, eval=FALSE}
+#group by and filter
+df %>% group_by(Species) %>% filter(sum(Petal_Width) > 100)
+
+```
+
+### In Python
+
+```{python, eval=FALSE}
+#group by and filter
+df.groupby('Species').filter(lambda x: sum(x['Petal_Width']) > 100)
+```
+
+## **Missing Values** {.tabset .tabset-fade .tabset-pills}
+
+### In R
+
+```{r, eval=FALSE}
+#number of missing values in each column
+map(df, ~sum(is.na(.)))
+
+#replacing missing values
+df %>% mutate(Sepal_Length = replace_na(Sepal_Length, 0))
+
+df$Sepal_Length[is.na(df$Sepal_Length)] <-0
+```
+
+### In Python
+
+```{python}
+#number of missing values in each column
+df.isna().sum()
+
+#replacing missing values
+df['Sepal_Length'] = df['Sepal_Length'].fillna(0)
+```
+
+<br>
+
+## **Creating new Columns** {.tabset .tabset-fade .tabset-pills}
+
+### In R
+
+```{r, eval=FALSE}
+# using mutate
+df %>%
+  mutate(Petal_L_W = Petal_Length + Petal_Width)
+```
+
+### In Python
+
+```{python, eval=FALSE}
+#using assign
+df.assign(Petal_W_L =  df['Petal_Length'] + df['Petal_Width'])
+```
+<br>
+
+## **Joining/Sorting** {.tabset .tabset-fade .tabset-pills}
+
+### In R
+
+```{r, eval=FALSE}
+#split df by column number to join back together
+
+df1 <- df[ ,c(1:2,5)]
+df2 <- df[,c(3:5)]
+```
+
+### In Python
+
+```{python, eval=FALSE}
+#split df by column number to join back together
+
+#remember, Python is 0 indexed
+df1 = df.iloc[:,[0,1,4]]
+
+df2 = df.iloc[:,2:5] # Select between indexes 1 and 4 (2,3,4)
+df2 = df.iloc[:,2:] # Select From 3rd to end
+df2 = df.iloc[:,2:5] # select From 3rd to 5th
+```
+<br>
+
+
+## **Visualizations** {.tabset .tabset-fade .tabset-pills}
+
+### In R
+
+```{r, eval=FALSE}
+
+```
+
+### In Python
+
+#### **Plotting with matplotlib**
+
+```{python, echo = T, results = "hide"}
+# PREPARING DATA TO PLOT
+
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
+#group by and agg to get stats to plot
+df3 = df.groupby('Species')['Sepal_Length'].agg(['mean']).rename(columns={'mean': 'mean_sepal_length'}).reset_index()
+
+#sample dataframe with a date column
+months =  pd.date_range('2021-01-01','2022-01-01' , freq='1M')-pd.offsets.MonthBegin(1)
+apples_picked = [12,22,45,50,75,80,68,82,90,77,76,54]
+
+time_df = pd.DataFrame()
+time_df['months'] = months
+time_df['apples_picked'] = apples_picked
+
+```
+
+
+
+```{python, message = F}
+#histogram
+df.hist('Sepal_Width')
+plt.show()
+```
+
+```{python}
+#scatterplot
+df.plot.scatter(x = 'Sepal_Width', y = 'Sepal_Length', c = 'Species', cmap = "viridis")
+plt.show()
+```
+
+```{python}
+#basic bar plot
+df3.plot(kind = "bar", x = "Species", title='Mean Sepal Length')
+plt.show()
+```
+
+```{python}
+#basic horizontal bar plot
+df3.plot(kind = "barh", x = "Species", title='Mean Sepal Length')
+plt.show()
+```
+
+```{python}
+#basic line plot
+time_df.plot(x = 'months', y = 'apples_picked', kind = 'line', title = "Apples Picked Each Month")
+plt.show()
+```
+
+<br>
+
+#### **Plotting with Seaborn**
+
+```{python, message = F}
+import seaborn as sns
+import matplotlib.pyplot as plt
+```
+
+```{python}
+#histogram
+plt.figure()
+sns.set(style="darkgrid")
+sns.histplot(data = df, x = "Sepal_Length")
+plt.show()
+```
+
+```{python}
+#scatterplot
+plt.figure()
+sns.scatterplot(data = df, x = "Sepal_Length", y = "Sepal_Width")
+plt.show()
+```
+
+```{python}
+#basic bar plot
+plt.figure()
+sns.barplot(x = 'Species', y = 'mean_sepal_length', data = df3)
+plt.show()
+```
+
+```{python}
+#basic horizontal bar plot
+plt.figure()
+sns.barplot(x = 'mean_sepal_length', y = 'Species', data = df3, orient = "h")
+plt.show()
+```
+
+```{python}
+#basic line plot
+plt.figure()
+sns.lineplot(x = 'months', y = "apples_picked", data = time_df)
+plt.show()
+```
+
+<br>
+
+## **Using SQL (SSMS)** {.tabset .tabset-fade .tabset-pills}
+
+### In R
+
+```{r, eval=FALSE}
+library(DBI)
+library(odbc)
+
+# database connection ####
+con <- DBI::dbConnect(odbc::odbc(),
+                      Driver = "ODBC Driver 17 for SQL Server",
+                      Server = "",
+                      UID = "",
+                      PWD = ''
+                      )
+
+# Query
+data = dbGetQuery(con, "SELECT * FROM Database..Table WHERE CallDate >= '2022-01-01' ORDER BY 1 DESC", .con = con))
+```
+
+### In Python
+
+```{python, eval=FALSE}
+import pyodbc
+from sqlalchemy.engine import URL
+from sqlalchemy import create_engine
+
+
+connection_string = 'DRIVER={ODBC Driver 17 for SQL Server};''SERVER=;''UID=;''PWD=;'
+connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
+
+engine = create_engine(connection_url)
+
+data = pd.read_sql("SELECT TOP(100) * FROM Database..Table", engine)
+```
+<br>
+
+## **Sending Emails** {.tabset .tabset-fade .tabset-pills}
+
+### In R
+
+```{r, eval=FALSE}
+
+```
+
+### In Python
+
+```{python, eval=FALSE}
+
+```
+<br>
+
